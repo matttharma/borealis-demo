@@ -48,6 +48,8 @@ targets:  # The list of manifests sources
       beforeDeployment:
         - pause:
             untilApproved: true
+            requiresRoles:
+            - Organization Admin
         - runWebhook:
             name: Send_Slack_Deployment_Approval_Required
       afterDeployment:
@@ -65,6 +67,8 @@ targets:  # The list of manifests sources
       beforeDeployment:
       - pause:
           untilApproved: true
+          requiresRoles:
+            - Organization Admin
       - runWebhook:
           name: Send_Slack_Deployment_Approval_Required
       afterDeployment:
@@ -82,17 +86,52 @@ targets:  # The list of manifests sources
       beforeDeployment:
         - pause:
             untilApproved: true
+            requiresRoles:
+            - Organization Admin
         - runWebhook:
             name: Send_Slack_Deployment_Approval_Required
       afterDeployment:
       - runWebhook:
           name: Send_Slack_Deployment_Complete
+  prod-apac:
+    account: demo-prod-west-cluster
+    constraints:
+      afterDeployment:
+        - runWebhook:
+            name: Send_Slack_Deployment_Complete
+      beforeDeployment:
+        - pause:
+            requiresRoles:
+              - Organization Admin
+            untilApproved: true
+        - runWebhook:
+            name: Send_Slack_Deployment_Approval_Required
+      dependsOn:
+        - infosec
+        - staging
+    namespace: borealis-prod-apac
+    strategy: mycanary
 trafficManagement:
   - targets: [prod-east]
     smi:
-      - rootServiceName: potato-facts-cluster-svc
-      - rootServiceName: potato-lies-cluster-svc
+      - rootServiceName: potato-facts-external
+      - rootServiceName: potato-lies-external
   - targets: [prod-eu]
     kubernetes:
       - activeService: potato-facts-external
+        previewService: potato-facts-internal
       - activeService: potato-lies-external
+        previewService: potato-lies-internal
+  - istio:
+      - virtualService:
+          name: potato-facts
+        destinationRule:
+          name: potato-facts
+          activeSubsetName: v1
+      - virtualService:
+          name: potato-lies-external
+        destinationRule:
+          name: potato-lies-external
+          activeSubsetName: v1
+    targets:
+      - prod-apac
